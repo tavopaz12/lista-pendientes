@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <todo-app> </todo-app>
+
+    <script type="module">
+      import {
+        LitElement,
+        html,
+        css,
+      } from "https://unpkg.com/lit@2.3.1/index.js?module";
+
+      class TodoApp extends LitElement {
+        connectedCallback() {
+          super.connectedCallback();
+          const URL = "https://api-tucanteach.herokuapp.com/api/v1/tasks";
+          fetch(URL)
+            .then((res) => res.json())
+            .then((data) => {
+              this.todos = this.mapTodos(data);
+            });
+        }
+
+        mapTodos(items) {
+          return items.map((item) => {
+            return { title: item.title, isDone: item.completed, id: item.id };
+          });
+        }
+
+        disconnectedCallback() {
+          console.log("DISCONNECT TODO APP");
+        }
+
+        static get properties() {
+          return {
+            todos: {
+              type: Array,
+            },
+          };
+        }
+
+        constructor() {
+          super();
+          this.todos = [];
+        }
+
+        render() {
+          const { totalDones, totalPendings } = this.calculateTotals();
+          return html`
+            <form @submit=${this.onSubmit}>
+              <label><b>TAREA A AGREGAR</b></label>
+              <input type="text" name="newTarea" required />
+              <button>AGREGAR</button>
+            </form>
+            <div>
+              <p>Pendientes: ${totalPendings} || Hechas: ${totalDones}</p>
+            </div>
+            <ol>
+              ${this.todos.map((item) => {
+                return html`
+                  <li>
+                    <button @click=${() => this.remove(item, item.id)}>
+                      X
+                    </button>
+                    <input
+                      @click=${() => this.onChangeDone(item, item.id)}
+                      type="checkbox"
+                      name="checkBox"
+                      id="check"
+                      .checked="${item.isDone}"
+                    />
+                    ${item.title}
+                  </li>
+                `;
+              })}
+            </ol>
+          `;
+        }
+
+        calculateTotals() {
+          const dones = this.todos.filter((item) => {
+            if (item.isDone === true) {
+              return true;
+            }
+            return false;
+          });
+
+          const totalDones = dones.length;
+          return { totalDones, totalPendings: this.todos.length - totalDones };
+        }
+
+        onSubmit(event) {
+          event.preventDefault();
+          const data = new FormData(event.target);
+          const newItem = data.get("newTarea");
+          event.target.reset();
+          const url = "https://api-tucanteach.herokuapp.com/api/v1/tasks";
+          const body = { title: newItem };
+
+          fetch(url, {
+            method: "POST", // or 'PUT'
+            body: JSON.stringify(body), // data can be `string` or {object}!
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
+            .then((res) => res.json())
+            .catch((error) => console.error("Error:", error))
+            .then((response) => console.log("Success:", response));
+          this.todos = [...this.todos, { title: newItem, isDone: false }];
+        }
+
+        onChangeDone(todo, id) {
+          this.todos = this.todos.map((item) => {
+            if (todo === item) {
+              return { ...item, isDone: !item.isDone };
+            }
+            return item;
+          });
+        }
+
+        remove(item, id) {
+          fetch(`https://api-tucanteach.herokuapp.com/api/v1/tasks/${id}`, {
+            method: "DELETE",
+          })
+            .then((res) => res.json())
+            .then((res) => {
+              if (res.success) {
+                let task = this.state.task.filter((c) => c.id !== id);
+                this.setState({ task });
+                console.log("CATEGORIA ELIMINADA");
+              }
+            });
+          this.todos = this.todos.filter((todo) => {
+            if (todo === item) {
+              return false;
+            }
+            return true;
+          });
+        }
+      }
+
+      customElements.define("todo-app", TodoApp);
+    </script>
+  </body>
+</html>
+
+<!-- Nombre, Apellido Paterno, Email, Telefono 
+Tabla de contactos
+-->
